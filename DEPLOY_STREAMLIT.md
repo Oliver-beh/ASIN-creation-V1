@@ -26,22 +26,30 @@ you remove them from the viewer list by hand. Put a calendar reminder on it.
 
 ## 1. One-time: push to a **private** GitHub repo
 
-The repo is already initialised with a first commit. Create the remote empty and
-private, then push:
+Repo: **`Oliver-beh/ASIN-creation-V1`**. Already initialised locally with a
+first commit, and `origin` already points at it over HTTPS.
 
-```bash
-gh repo create bdf-vc-upload --private --source . --remote origin --push
-```
+This machine has no GitHub credentials -- no SSH key, nothing in the keychain --
+and no `gh`/`brew` to run a browser login. So authenticate with a Personal
+Access Token over HTTPS, once:
 
-No `gh`? Create it in the GitHub UI (**private**, no README, no .gitignore),
-then:
+1. GitHub -> Settings -> Developer settings -> Personal access tokens ->
+   **Fine-grained tokens** -> Generate. Scope it to *only* this repository, with
+   **Contents: Read and write**. Short expiry is fine.
+2. `git fetch origin`. When prompted, username is the account that owns the repo
+   (`Oliver-beh`), password is the **token**. The `osxkeychain` helper stores it,
+   so this is a one-time prompt.
 
-```bash
-git remote add origin git@github.com:<you-or-org>/bdf-vc-upload.git && git push -u origin main
-```
+Note the global git identity here is `mikaloka-hub`, not `Oliver-beh`. If a
+stale credential for the wrong account is cached, the push 403s -- clear it with
+`git credential-osxkeychain erase` (then `host=github.com`, `protocol=https`,
+blank line) and re-authenticate.
 
-Prefer creating it under the Remazing org rather than your personal account, so
-it survives you.
+**Confirm the repo is private before pushing** -- GitHub repo page, the badge
+next to the name must read *Private*. Anonymous API lookup returns 404, which is
+consistent with private but also with a typo, so read the badge. If it is
+public, make it private first: Settings -> General -> Danger Zone -> Change
+visibility. Nothing here should reach a public repo.
 
 **Check before pushing** that no client data is staged:
 
@@ -61,7 +69,7 @@ If that grep prints anything, stop and tell me.
    for the org that owns the repo, or it will not see a private repo.
 2. **Create app** -> **Deploy from GitHub**.
 3. Fill in:
-   - Repository: `<you-or-org>/bdf-vc-upload`
+   - Repository: `Oliver-beh/ASIN-creation-V1`
    - Branch: `main`
    - Main file path: `app.py`
 4. **Advanced settings**:
