@@ -1,0 +1,7 @@
+product_type: SKIN_MOISTURIZER
+generic_keyword: "Gesichtspflege"
+
+# A face moisturiser is a cream even when the name calls its texture a gel
+# ("FACE+ Vitamin C Glow Gel Cream", "Hyaluron Hydro Gel"). Verified on 4/4 rows.
+item_form_keywords_prepend:
+  - {match: [Cream, Creme, Gel, Fluid], candidates: [Creme]}

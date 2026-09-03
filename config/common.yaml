@@ -1,0 +1,294 @@
+# Beiersdorf DE - shared mapping configuration
+#
+# Every value below was derived from the six verified upload examples
+# (74 products, 5 product types). Nothing is invented: where the examples do not
+# support a value, the field is left for the QA report to flag.
+#
+# Marketplace: amazon.de / de_DE only. GB is deliberately out of scope for the
+# prototype - the English templates use a different value vocabulary
+# (Grams vs Gramm, Fresh vs Frisch, Unit vs Einheit) and would need a parallel
+# vocabulary block, not a translation layer.
+
+locale: de_DE
+vendor_code: BEIF5
+
+yes: Ja
+no: Nein
+
+dimension_unit: Millimeter
+
+weight_units:
+  g: Gramm
+  kg: Kilogramm
+
+# Einheit Netto-füll-menge -> unit_count type, and whether the liquid block applies.
+content_units:
+  ml:
+    unit_count_type: milliliter
+    is_liquid: true
+    liquid_unit: Milliliter
+  g:
+    unit_count_type: gramm
+    is_liquid: false
+  st:
+    unit_count_type: Stück
+    is_liquid: false
+  stk:
+    unit_count_type: Stück
+    is_liquid: false
+
+# ---------------------------------------------------------------------- brand
+# Verified against 58 rows: the brand is always the first token of the item name.
+# NIVEA splits on a later token; everything else is a straight match.
+male_gender_values: [Männer, Male, Herren]
+
+brand_rules:
+  - match: [NIVEA]
+    requires: [MEN, MALE, MÄNNER]
+    requires_gender: [Männer, Male, Herren]
+    brand: NIVEA MEN
+  - match: [NIVEA]
+    requires: [SUN]
+    brand: NIVEA SUN
+  - match: [NIVEA]
+    brand: NIVEA
+  - match: [Hidrofugal]
+    brand: Hidrofugal
+  - match: ["8x4"]
+    brand: 8X4
+  - match: [Labello]
+    brand: Labello
+  - match: [Florena]
+    brand: Florena
+  - match: [Eucerin]
+    brand: Eucerin
+
+# -------------------------------------------------------- MGR -> category pair
+# One MGR Bezeichnung resolves to exactly one category/subcategory pair - this
+# held for all 74 rows with zero exceptions. A trailing '*' matches by prefix.
+mgr_categories:
+  "HIDROFUGAL DEO":        {category: Körperpflege, subcategory: Deodorants}
+  "8X4":                   {category: Körperpflege, subcategory: Deodorants}
+  "NIVEA DEO FEMALE":      {category: Körperpflege, subcategory: Deodorants}
+  "NIVEA DEO MALE":        {category: Körperpflege, subcategory: Deodorants}
+  "NIVEA HAIR STYLING":    {category: "Haarpflege & -styling", subcategory: Hair Styling}
+  "NF FACIAL":             {category: Körperpflege, subcategory: Face}
+  "FLO FACE":              {category: Körperpflege, subcategory: Face}
+  "FLO BODY, HAND, CREAM": {category: "Hände & Füße", subcategory: Nail Treatments/Nail Care}
+  "NBODY PERFORMANCE":     {category: Körperpflege, subcategory: Body}
+  "NBABY CARE/CL.":        {category: Babypflege, subcategory: Baby / Säuglingshautpflege}
+  "NBC LIQUID SOAP":       {category: "Baden & Duschen", subcategory: "Cleansers/Soaps & Hand Wash, Shower Oils and Gels"}
+  "GIFT PACKS":            {category: Körperpflege, subcategory: Gift Sets}
+
+# ------------------------------------------------- subcategory -> browse node
+# Fixed where the subcategory decides it; keyword-driven where it does not.
+# Candidates are tried in order against the template's live cascade options.
+browse_nodes:
+  Deodorants: "Deodorants & Antitranspirants"
+  Gift Sets: "Körperpflegesets"
+  "Styling Gel, Wax and other Products": "Haargele"
+  Nail Treatments/Nail Care: "Handcremes & Nagelcremes"
+  Body: "Körperlotionen"
+  Baby / Säuglingshautpflege: "Babyöle"
+  "Cleansers/Soaps & Hand Wash, Shower Oils and Gels": "Handseifen"
+  Face:
+    keywords:
+      - {match: [Nachtpflege, Night, Nachtcreme], value: Nachtpflege}
+      - {match: [Reinigungsmilch, Cleansing Milk], value: "Reinigungsmilch & Cremes für das Gesicht"}
+    default: [Tagespflege]
+  Hair Styling:
+    keywords:
+      - {match: [Mousse, Schaumfestiger], value: Styling-Mousse}
+      - {match: [Gel], value: Haargele}
+      - {match: [Cream, Creme, Lotion], value: "Cremes & Lotionen fürs Haarstyling"}
+      - {match: [Spray], value: Haarsprays}
+    default: [Haarsprays]
+
+# ------------------------------------------------------------------ item form
+# Order matters. 'Zerstäuber' and 'Roll-on' are liquids even though the
+# surrounding words look like a spray, so they are matched first.
+item_form_keywords:
+  - {match: [Zerstäuber, Roll-on, Rollon, Roller], candidates: [Flüssigkeit, Liquid]}
+  - {match: [Spray, Aerosol], candidates: [Aerosol]}
+  - {match: [Stick], candidates: [Stift, Stick]}
+  - {match: [Mousse, Schaumfestiger], candidates: [Mousse, Schaum]}
+  - {match: [Gel], candidates: [Gel]}
+  - {match: [Serum], candidates: [Serum]}
+  - {match: [Balsam, Balm], candidates: [Balsam]}
+  - {match: [Lotion, Milk, Milch], candidates: [Lotion]}
+  - {match: [Öl, Oil], candidates: [Öl]}
+  - {match: [Butter], candidates: [Butter]}
+  - {match: [Peeling, Scrub], candidates: [Peeling]}
+  - {match: [Maske, Mask], candidates: [Maske]}
+  - {match: [Tücher, Wipes], candidates: [Feuchttücher]}
+  - {match: [Puder, Powder], candidates: [Pulver]}
+  - {match: [Creme, Cream, Gesichtspflege, Tagespflege, Nachtpflege, Handcreme], candidates: [Creme]}
+
+# A pressurised product whose name carries no form word is an aerosol. Applied
+# only when Gefahrgut-profil marks it as dangerous goods, never as a blanket default.
+item_form_when_pressurised: [Aerosol]
+
+# Where the MGR is too coarse to pick the subcategory on its own.
+subcategory_overrides:
+  Hair Styling:
+    - {match: [Gel, Wax, Wachs, Pomade], value: "Styling Gel, Wax and other Products"}
+
+# ---------------------------------------------------------------------- scent
+# The source column 'Duft (Scent)' is NOT reliable - the examples show 'Fruchtig'
+# resolving to both Fresh and Rose. The item name is the real signal, with a
+# fallback that mirrors the AVS guide ("if nothing fits, select fresh").
+# Every fallback hit is flagged for review rather than shipped silently.
+scent_keywords:
+  - {match: [Vanilla, Vanille], candidates: [Vanille]}
+  - {match: [Lime, Limette, Zitrone, Lemon, Citrus, Zitrus], candidates: [Zitrus, Limette, Zitrone]}
+  - {match: [Blossom, Bloomy, Rose, Blüte], candidates: [Rose]}
+  - {match: [Berry, Beere], candidates: [Beere, Frisch]}
+  - {match: [Coconut, Kokos], candidates: [Kokosnuss]}
+  - {match: [Lavendel, Lavender], candidates: [Lavendel]}
+  - {match: [Mint, Minze], candidates: [Minze]}
+  - {match: [Aloe], candidates: [Aloe Vera, Aloe]}
+  - {match: [Sensitiv, Sensitive, Classic, Extra Trocken, Derma Control, Ohne Duft, Neutral],
+     candidates: [Unparfümiert]}
+scent_default: [Frisch, Sauber]
+
+# ------------------------------------------------------------------ skin type
+skin_type_lookup:
+  "Alle Hauttypen": [Alle, Normal]
+  "Alle": [Alle, Normal]
+  "normal": [Normal]
+  "Normal": [Normal]
+  "sensitive": [Empfindlich]
+  "sensitiv": [Empfindlich]
+  "Empfindlich": [Empfindlich]
+  "trocken": [Trocken]
+  "dry": [Trocken]
+  "fettig": [Fettig, Ölig]
+  "Mischhaut": [Mischhaut, Kombination]
+  "reif": [Reif, Normal]
+skin_type_keywords:
+  - {match: [Sensitiv, Sensitive], candidates: [Empfindlich]}
+  - {match: [Trocken, Dry, Urea, Repair], candidates: [Trocken]}
+  - {match: [Anti-Age, Q10, Reif], candidates: [Reif, Normal]}
+skin_type_default: [Normal]
+
+# ------------------------------------------------------------- dangerous goods
+# Verified 30/30 on the deodorant batch with no exceptions.
+dangerous_goods:
+  hazardous_profiles: [GPP]
+  non_hazardous_profiles: [NOG]
+  hazardous_candidates: [Transport, Transportation]
+  non_hazardous_candidates: [Nicht zutreffend, Not Applicable]
+  aspect_candidates: ["Gefahrstoffkennung der Vereinten Nationen", "UN Regulatory Id"]
+
+# -------------------------------------------------------------------- lookups
+lookups:
+  country:
+    Germany: [Deutschland]
+    Deutschland: [Deutschland]
+    Spain: [Spanien]
+    Spanien: [Spanien]
+    Poland: [Polen]
+    Polen: [Polen]
+    China: [China]
+    Turkey: [Türkei]
+    Türkei: [Türkei]
+    France: [Frankreich]
+    Italy: [Italien]
+    Netherlands: [Niederlande]
+    Austria: [Österreich]
+    Switzerland: [Schweiz]
+    Czech Republic: [Tschechien]
+    Hungary: [Ungarn]
+    Belgium: [Belgien]
+    Portugal: [Portugal]
+    Mexico: [Mexiko]
+    Thailand: [Thailand]
+    India: [Indien]
+    Brazil: [Brasilien]
+    "United Kingdom": ["Vereinigtes Königreich"]
+    USA: ["Vereinigte Staaten"]
+
+  target_audience:
+    Female: ["Damen"]
+    Frauen: ["Damen"]
+    Damen: ["Damen"]
+    Male: ["Herren"]
+    Männer: ["Herren"]
+    Herren: ["Herren"]
+    Unisex: ["Unisex – Erwachsene", "Unisex"]
+    Kinder: ["Unisex-Kinder"]
+    Baby: ["Unisex-Kinder"]
+
+  target_gender:
+    Female: [Weiblich, Female]
+    Frauen: [Weiblich, Female]
+    Male: [Männlich, Male]
+    Männer: [Männlich, Male]
+    Unisex: [Unisex]
+
+# ----------------------------------------------------------------- the fields
+# Written in this order, except that fields driving a cascading dropdown are
+# always written before the fields that depend on them (handled by the engine).
+fields:
+  - {code: "rtip_vendor_code#1.value",            rule: {derive: vendor_code}}
+  - {code: "vendor_sku#1.value",                  rule: {source: nart, transform: text}, required_in_template: true}
+  - {code: "product_type#1.value",                rule: {derive: product_type}}
+  - {code: "item_name#1.value",                   rule: {derive: item_name}, required_in_template: true}
+  - {code: "brand#1.value",                       rule: {derive: brand}, required_in_template: true}
+  - {code: "external_product_id#1.type",          rule: {const: GTIN}}
+  - {code: "external_product_id#1.value",         rule: {derive: external_product_id}, required_in_template: true}
+
+  - {code: "product_category#1.value",            rule: {derive: category_chain}, required_in_template: true}
+  - {code: "product_subcategory#1.value",         rule: {derive: subcategory_override}}
+  - {code: "recommended_browse_nodes#1.value",    rule: {derive: browse_node}}
+  - {code: "generic_keyword#1.value",             rule: {derive: generic_keyword}}
+
+  - {code: "package_level#1.value",               rule: {candidates: [Einheit, Unit]}}
+  - {code: "is_trade_item_orderable_unit#1.value", rule: {candidates: [Ja, Yes]}}
+  - {code: "target_audience_keyword#1.value",     rule: {lookup: target_audience, source_column: gender}}
+  - {code: "target_gender#1.value",               rule: {lookup: target_gender, source_column: gender}}
+  - {code: "manufacturer#1.value",                rule: {const: "Beiersdorf AG"}}
+
+  - {code: "bullet_point#1.value",                rule: {source: short_description, transform: text}}
+  - {code: "rtip_product_description#1.value",    rule: {source: long_description, transform: text}}
+  - {code: "rtip_ingredients#1.value",            rule: {source: ingredients, transform: text}}
+  - {code: "lifestyle#1.value",                   rule: {candidates: ["Massenschönheit", "Mass Beauty"]}}
+  - {code: "number_of_items#1.value",             rule: {const: 1}}
+  - {code: "color#1.standardized_values#1",       rule: {candidates: [Mehrfarbig, Multicolor]}}
+  - {code: "is_heat_sensitive#1.value",           rule: {candidates: [Nein, "No"]}}
+  - {code: "is_expiration_dated_product#1.value", rule: {candidates: [Nein, "No"]}}
+
+  - {code: "item_form#1.value",                   rule: {derive: item_form},
+     skip_when: {subcategory_in: [Gift Sets]}}
+  - {code: "unit_count#1.value",                  rule: {derive: net_content}}
+  - {code: "street_date#1.value",                 rule: {source: launch_date, transform: date}}
+  # The template's scent vocabulary is product-type specific: the deodorant list
+  # offers 'Frisch', the face-cream list does not. Where nothing fits, the
+  # documented manual practice is to leave it blank, so a rejected scent is a
+  # review item and never blocks the upload.
+  # Scent is always flagged for review. The verified uploads are internally
+  # inconsistent here - identical Hidrofugal Classic products were given both
+  # 'Unscented' and 'Fresh' - so no rule can reproduce past practice. The engine
+  # is deterministic instead, and asks a human to confirm.
+  - {code: "scent#1.value",                       rule: {derive: scent}, on_reject: review,
+     always_review: true, skip_when: {subcategory_in: [Gift Sets]}}
+  - {code: "skin_type#1.value",                   rule: {derive: skin_type},
+     skip_when: {subcategory_in: [Gift Sets]}}
+
+  - {code: "list_price#1.value_with_tax",         rule: {source: uvp, transform: money}}
+  - {code: "uvp_list_price#1.value",              rule: {source: uvp, transform: money}}
+  - {code: "cost_price#1.value",                  rule: {source: cost_price, transform: money}}
+  - {code: "cost_price#1.currency",               rule: {const: EUR}}
+
+  - {code: "item_package_dimensions#1.length.value", rule: {derive: package_dimensions}}
+  - {code: "item_package_weight#1.value",         rule: {derive: package_weight}}
+  - {code: "rtip_master_pack_weight#1.value",     rule: {derive: master_pack},
+     skip_when: {source_empty: case_weight}}
+  - {code: "rtip_items_per_inner_pack#1.value",   rule: {source: units_per_case, transform: int}}
+  - {code: "rtip_inner_packs_per_master_pack#1.value", rule: {const: 1}}
+
+  - {code: "country_of_origin#1.value",           rule: {lookup: country, source_column: origin}, required_in_template: true}
+  - {code: "rtip_safety_warning#1.value",         rule: {const: "N/A"}}
+  - {code: "batteries_required#1.value",          rule: {candidates: [Nein, "No"]}}
+  - {code: "supplier_declared_dg_hz_regulation#1.value", rule: {derive: dangerous_goods}}
+  - {code: "is_liquid_double_sealed#1.value",     rule: {candidates: [Nein, "No"]}}

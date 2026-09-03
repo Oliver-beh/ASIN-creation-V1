@@ -1,0 +1,4 @@
+
+product_type: HAIR_STYLING_AGENT
+extra_fields:
+  - {code: "hair_type#1.value", rule: {candidates: [Alle, All]}}

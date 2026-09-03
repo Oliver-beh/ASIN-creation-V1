@@ -1,0 +1,57 @@
+# SKIN_SERUM (Vorlage-SKIN_SERUM, de_DE, template version 1.3)
+# Verified against Hautseren_2026-08-18T09_33_00Z.xlsm and the single Serum row
+# in Listungen_20260812_aggregiert.xlsx (NART 98783-01000-34).
+# Evidence base: one source row, no human upload to diff against. Everything
+# below is either read off the template's own dropdowns or flagged for review.
+
+product_type: SKIN_SERUM
+
+# generic_keyword is free text in this template (BEDINGT ERFORDERLICH).
+generic_keyword: "Gesichtsserum"
+
+# ------------------------------------------------------------ MGR -> category
+# NM MOISTURISER is the MGR for NIVEA MEN face care and covers both serums and
+# moisturisers in this sheet, so it is scoped to this overlay rather than added
+# to common.yaml: the pair is only verified against the SKIN_SERUM template,
+# whose Körperpflege subcategory list is not the same as the moisturiser one.
+# Move it to common.yaml once the SKIN_MOISTURIZER batch confirms the same pair.
+mgr_categories:
+  "NM MOISTURISER": {category: Körperpflege, subcategory: Face}
+
+# ------------------------------------------------- subcategory -> browse node
+# Körperpflege/Face in this template offers exactly two nodes:
+# 'Gesichtsseren' and 'Seren für die Augen'. The shared Face rules
+# (Tagespflege / Nachtpflege / Reinigungsmilch) do not exist here, so they are
+# replaced rather than extended - otherwise every serum row is a rejected value.
+browse_nodes:
+  Face:
+    keywords:
+      - {match: [Augen, Augenserum, Eye, Eyes], value: "Seren für die Augen"}
+    default: [Gesichtsseren]
+
+# ---------------------------------------------------------------- item form
+# The template's Form-des-Artikels list is Aerosol, Balsam, Creme, Gel, Kapsel,
+# Lotion, Öl, Tropfen - there is no 'Serum'. The shared rule resolves a serum
+# title to 'Serum', which this template rejects and which would block the
+# upload. An empty candidate list makes the rule resolve to nothing, so the cell
+# is left blank and QA raises it as a conditionally-required field for the
+# reviewer to pick from the eight options. Nothing here is accurate enough to
+# assert: a pump-dispensed aqueous serum is neither Tropfen nor Creme, and no
+# human upload exists to copy. Replace [] with [Gel] if BDF confirms a house
+# default.
+item_form_keywords_prepend:
+  - {match: [Serum, Seren], candidates: []}
+
+# --------------------------------------------------------------------- scent
+# This template's Duft list is not the fragrance-family vocabulary the other
+# product types use - it is only 'Mit Duft', 'Ohne Duft', 'Ohne Parfüm'. The
+# shared scent_keywords therefore all resolve to values this template rejects.
+# Only an explicit fragrance-free claim in the item name earns a fragrance-free
+# value; claiming 'Ohne Parfüm' on a product whose INCI lists Parfum is a
+# claims problem, not just a wrong cell. Everything else defaults to
+# 'Mit Duft', which stays true for the current Beiersdorf serum range and is
+# flagged for review on every row like all other scent values.
+scent_keywords:
+  - {match: ["Ohne Duft", "Ohne Parfum", "Ohne Parfüm", Unparfümiert, "Fragrance Free", "Fragrance-Free"],
+     candidates: ["Ohne Duft", "Ohne Parfüm"]}
+scent_default: ["Mit Duft"]

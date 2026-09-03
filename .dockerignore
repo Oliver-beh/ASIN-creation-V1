@@ -1,0 +1,20 @@
+# Colab-era working folders — the web app is stateless, these must not ship.
+templates/
+listungen/
+output/
+sample_output/
+
+# Local-only
+.git/
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.DS_Store
+**/.DS_Store
+
+# Docs and dev tooling: not needed at runtime.
+*.md
+*.ipynb
+tools/

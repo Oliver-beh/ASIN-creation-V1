@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+**/.DS_Store
+
+# Streamlit secrets are per-deployment and pasted into the Community Cloud UI,
+# never committed. Guard the filename in case one is ever created locally.
+.streamlit/secrets.toml
+
+# Client data. The web app is stateless; these working folders and the sample
+# run are not needed at runtime and must not leave the machine.
+listungen/*
+!listungen/README.txt
+output/*
+!output/README.txt
+templates/*
+!templates/README.txt
+sample_output/
+
+# Local editor/agent config: hardcodes absolute paths from one machine.
+.claude/

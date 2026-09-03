@@ -1,0 +1,31 @@
+# Security boundary depends on the host:
+#
+#   Streamlit Community Cloud (current) -- the app must be set to **private**
+#   with an explicit viewer allowlist. Streamlit terminates TLS and serves the
+#   websocket from its own origin, so its stock CORS + XSRF checks are correct
+#   here and are left ON. The sidebar identity line is the live proof the
+#   allowlist is in force; "unknown" there means it is not.
+#
+#   Cloud Run behind IAP (previous, see DEPLOY_CLOUDRUN.md) -- IAP's proxy
+#   rewrites Origin and upgrades the websocket, which fights both checks. If
+#   that path is ever restored, set enableCORS and enableXsrfProtection back to
+#   false, and only then, because IAP is doing the work instead.
+[server]
+enableCORS = true
+enableXsrfProtection = true
+headless = true
+maxUploadSize = 50
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#1CA0A5"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F9F9F9"
+textColor = "#002F40"
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = true

@@ -1,0 +1,25 @@
+product_type: BODY_DEODORANT
+generic_keyword: "Deo"
+
+# `Form des Artikels` (item_form#1.value) on this template offers exactly nine
+# options and 'Spray' is not one of them - verified against the live dropdown on
+# the Deodorants build: Aerosol, Creme, Feuchttücher, Flüssigkeit, Gel, Lotion,
+# Mousse, Pulver, Stift. A deodorant the Listungen calls a Spray is an Aerosol
+# here, so pin that mapping for this product type instead of relying on the
+# shared keyword list.
+#
+# ORDER MATTERS. These rules are prepended, so they run before the shared ones
+# in common.yaml. The Zerstäuber / Roll-on rule has to stay in front of the
+# aerosol rule: an atomiser is a pump, not a propellant, and 'Pumpspray'
+# contains the word Spray. Dropping the guard turns
+# 'Hidrofugal Classic Zerstäuber 55 ml' into an Aerosol, which is a false
+# dangerous-goods signal on a product that has none.
+item_form_keywords_prepend:
+  - {match: [Zerstäuber, Zerstaeuber, Pumpspray, Roll-on, Rollon, Roller],
+     candidates: [Flüssigkeit, Liquid]}
+  # 'Aerosol' first because that is what this template offers. 'Spray' is kept
+  # as a second candidate only so the rule still resolves on a template build
+  # that does offer it - the engine writes the first candidate the template
+  # actually accepts and never invents one.
+  - {match: [Spray, Sprüh, Spruehdeo, Deospray, Aerosol],
+     candidates: [Aerosol, Spray]}
