@@ -26,7 +26,8 @@ from bdfvc.template import FIRST_DATA_ROW, VCTemplate
 HERE = Path(__file__).resolve().parent
 
 
-def build(template_path, input_path, out_dir, config_dir=None, sheet=None, filter_template=None):
+def build(template_path, input_path, out_dir, config_dir=None, sheet=None, filter_template=None,
+          brand=None):
     config_dir = Path(config_dir or HERE / "config")
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -39,10 +40,20 @@ def build(template_path, input_path, out_dir, config_dir=None, sheet=None, filte
             file=sys.stderr,
         )
 
-    cfg = cfgmod.load(config_dir, template.product_type)
+    # The template's Händlercode dropdown names the vendor account, so an
+    # unspecified brand is read off it rather than assumed.
+    if brand is None:
+        brand = cfgmod.detect_brand(config_dir, template.vendor_code_options())
+
+    cfg = cfgmod.load(config_dir, template.product_type, brand=brand)
     sheet_obj = ListungenSheet(input_path, sheet=sheet)
 
     report = QAReport(template, cfg, input_path, template_path)
+    if cfg.get("_brand"):
+        report.notes.append(
+            f"Brand profile: {cfg['_brand_label']} (config/brands/{cfg['_brand']}.yaml), "
+            f"vendor code {cfg.get('vendor_code')}"
+        )
     if cfg.get("_overlay") is None:
         report.notes.append(
             f"No product-type overlay for {template.product_type}; only the shared "
@@ -89,6 +100,11 @@ def main(argv=None):
     p.add_argument("--config-dir", default=None)
     p.add_argument("--sheet", default=None, help="input worksheet name (auto-detected by default)")
     p.add_argument(
+        "--brand",
+        default=None,
+        help="brand profile in config/brands, e.g. 'eucerin' (default: auto/beiersdorf_cosmed)",
+    )
+    p.add_argument(
         "--filter-template",
         default=None,
         help="only take source rows whose 'Template' column matches, e.g. 'Body Deodorant'",
@@ -97,7 +113,8 @@ def main(argv=None):
 
     try:
         report, out_xlsm, out_qa = build(
-            args.template, args.input, args.out_dir, args.config_dir, args.sheet, args.filter_template
+            args.template, args.input, args.out_dir, args.config_dir, args.sheet,
+            args.filter_template, args.brand,
         )
     except InputSheetError as e:
         print(f"Input sheet problem: {e}", file=sys.stderr)
@@ -107,6 +124,7 @@ def main(argv=None):
         return 2
 
     print(f"\n  Product type : {report.template.product_type} ({report.template.locale})")
+    print(f"  Brand        : {report.config.get('_brand_label') or '-'}")
     print(f"  Products     : {len(report.rows)}")
     print(f"  Upload file  : {out_xlsm}")
     print(f"  QA report    : {out_qa}")

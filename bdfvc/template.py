@@ -147,6 +147,20 @@ class VCTemplate:
             if fc and rq and any(t in str(rq).upper() for t in REQUIRED_TOKENS)
         ]
 
+    def vendor_code_options(self):
+        """The Händlercode dropdown options, used to identify the vendor account.
+
+        Cosmed templates offer five Beiersdorf codes; the Eucerin template offers
+        exactly one. Returns [] when the column or its validation is missing.
+        """
+        col = self.resolve("rtip_vendor_code#1.value")
+        if not col:
+            return []
+        try:
+            return self.allowed_values(col, FIRST_DATA_ROW) or []
+        except Exception:  # noqa: BLE001 - a template without this dropdown is not an error
+            return []
+
     # --------------------------------------------------------------- dropdowns
 
     def _named_range_values(self, name: str):
