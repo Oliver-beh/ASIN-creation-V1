@@ -1,0 +1,14 @@
+# Beiersdorf Cosmed - the default vendor account (de_beauty, BEIF5).
+#
+# Deliberately near-empty: everything this account needs already lives in
+# common.yaml, which was written from its verified uploads. The file exists so
+# the account has a name in the picker and a detection token, and so that adding
+# a second brand does not turn the default into an unnamed special case.
+#
+# A brand profile may only set the keys in bdfvc/config.py BRAND_KEYS. Everything
+# Beiersdorf-wide (manufacturer, units, lookups, brand_rules, the field list, ...)
+# stays shared in common.yaml and cannot be overridden from here.
+
+label: "Beiersdorf Cosmed - NIVEA, Labello, Hidrofugal, 8x4, Florena"
+detect: {vendor_token: BEIF5}
+vendor_code: BEIF5

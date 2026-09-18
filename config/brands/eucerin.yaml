@@ -1,0 +1,71 @@
+# Eucerin - a Beiersdorf AG brand sold through its own Vendor Central account
+# (de_luxury_beauty, EUCFU), separate from the Cosmed account.
+#
+# Only the account-specific values live here. Everything else - manufacturer
+# "Beiersdorf AG", the German value vocabulary, units, country/gender lookups,
+# dangerous goods, GTIN and price handling, the field list - comes through from
+# common.yaml unchanged, and the BRAND_KEYS allowlist in bdfvc/config.py makes
+# sure this file cannot reach any of it.
+
+label: "Eucerin - Beiersdorf, de_luxury_beauty"
+detect: {vendor_token: EUCFU}
+vendor_code: EUCFU
+
+# brand#1.value: the Listungen titles are internal abbreviations ("Euc XMas Set
+# ...", "AMZ_Euc_Urea 5% ..."), so the shared first-token rule cannot resolve
+# them. The account only ever sells Eucerin, so it is a constant.
+# lifestyle#1.value: both templates offer Massenschoenheit and Premium-Schoenheit,
+# so the template cannot decide - the account does.
+field_overrides:
+  "brand#1.value":
+    rule: {const: Eucerin}
+  "lifestyle#1.value":
+    rule: {candidates: ["Premium-Schönheit", "Premium Beauty"]}
+  # A gift box has no single form - this batch holds serums, day creams and
+  # cleansers in one carton - and the SKIN_MOISTURIZER dropdown does not even
+  # offer 'Serum'. The field is BEDINGT ERFORDERLICH, so a rejected value asks a
+  # human instead of blocking, exactly as scent already does in common.yaml.
+  # (skip_when cannot help here: item_form is cascade-depth 0 and resolves before
+  # product_subcategory at depth 1, so it only ever sees the base subcategory.)
+  "item_form#1.value":
+    rule: {derive: item_form}
+    on_reject: review
+
+  # 6120 Face is the base assumption below, not something the source states, so
+  # every row is surfaced for review. Drop always_review once the range rules
+  # are confirmed against a non-gift-set batch.
+  "product_subcategory#1.value":
+    rule: {derive: subcategory_override}
+    always_review: true
+
+# MGR Bezeichnung is 'Eucerin' on every row (the numeric MGR varies by range but
+# the name does not), so this is one base pair for the whole account. Adds to the
+# shared table rather than replacing it.
+mgr_categories:
+  "EUCERIN": {category: "6100 Professional Skin Care", subcategory: "6120 Face"}
+
+# ...then refined by a title keyword. Order matters: 'Set' comes before 'LSF' and
+# 'Body', because "Euc XMas Set Epigenetic Tag LSF 30" and "Euc XMas Set Body
+# Atopi" are gift sets first.
+subcategory_overrides:
+  "6120 Face":
+    - {match: [Set, Geschenk, XMas, Weihnacht], value: "6170 Sets"}
+    - {match: [Body, Urea, Atopi, Körper, Lotion], value: "6110 Body"}
+    - {match: [Sun, Sonne, Sonnenschutz], value: "6180 Sun Care"}
+    - {match: [Men, Herren], value: "6160 Men"}
+    - {match: [Dusch, Bad, Shower], value: "6130 Bath and Shower"}
+
+# The Eucerin subcategory codes are not in the shared browse-node table, so add
+# them. Values are the same German nodes the Cosmed account already uses.
+browse_nodes:
+  "6170 Sets":
+    keywords:
+      - {match: [Nachtpflege, Nacht, Night], value: Nachtpflege}
+      - {match: [Body, Urea, Atopi, Körper], value: Körperlotionen}
+    default: [Tagespflege]
+  "6120 Face":
+    keywords:
+      - {match: [Nachtpflege, Nacht, Night], value: Nachtpflege}
+      - {match: [Reinigung, Cleansing], value: "Reinigungsmilch & Cremes für das Gesicht"}
+    default: [Tagespflege]
+  "6110 Body": "Körperlotionen"

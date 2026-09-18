@@ -163,3 +163,33 @@ gift SKUs, and the missing cost prices on the gift-set sheet.
 
 Nothing else should need touching. If it does, that is a sign a business rule
 leaked into the engine.
+
+## 8. Adding a brand (vendor account)
+
+One company can sell through several Vendor Central accounts. Beiersdorf Cosmed
+(`de_beauty`, `BEIF5`) carries NIVEA, Labello, Hidrofugal, 8x4 and Florena;
+Eucerin has its own (`de_luxury_beauty`, `EUCFU`). They share a manufacturer, a
+value vocabulary and the field list, but differ on vendor code, category tree and
+Lifestyle.
+
+The brand is **read off the uploaded template**, not guessed: its `Händlercode`
+dropdown lists only the accounts that template belongs to. The app pre-selects
+the match and lets the user override it.
+
+1. Create `config/brands/<slug>.yaml` with a `label`, a
+   `detect: {vendor_token: XXXXX}` and the account's `vendor_code`.
+2. Add `field_overrides` for any field whose rule differs, keyed by field code.
+3. Add rows to `mgr_categories`, `subcategory_overrides` or `browse_nodes` for
+   the account's category tree. These merge additively — another account's rows
+   are never removed.
+4. Run against a real batch and read the QA report.
+
+No code changes, and the picker finds the new file on its own.
+
+**A brand profile may only set the keys in `BRAND_KEYS`** (`bdfvc/config.py`).
+Everything company-wide — `manufacturer`, `lookups`, `brand_rules`,
+`item_form_keywords`, `scent_keywords`, `dangerous_goods`, units, the `fields`
+list — stays in `config/common.yaml` and cannot be overridden from a brand file.
+That is deliberate: config merging replaces lists wholesale, so a brand file that
+set `brand_rules:` would silently disable the NIVEA / NIVEA MEN / NIVEA SUN split
+for that run. Setting a key outside the allowlist is a load-time error naming it.

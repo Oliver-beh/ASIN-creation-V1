@@ -20,11 +20,13 @@ import unicodedata
 from pathlib import Path
 
 import streamlit as st
+import yaml
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
+from bdfvc import config as cfgmod  # noqa: E402
 from bdfvc.inputsheet import InputSheetError, ListungenSheet  # noqa: E402
 from bdfvc.template import VCTemplate  # noqa: E402
 from fill_bdf import build  # noqa: E402
@@ -32,6 +34,15 @@ from fill_bdf import build  # noqa: E402
 BUILD_ID = os.environ.get("BUILD_ID", "dev")
 BUILD_DATE = os.environ.get("BUILD_DATE", "unbuilt")
 CONFIG_DIR = HERE / "config"
+
+# Field code -> the template's German column label, for the brand expander.
+LABELS = {
+    "brand#1.value": "Markenname",
+    "lifestyle#1.value": "Lifestyle",
+    "product_category#1.value": "Produktkategorie",
+    "product_subcategory#1.value": "Produktunterkategorie",
+    "item_form#1.value": "Form des Artikels",
+}
 
 MAIN_BLUE = "#002F40"
 TEAL = "#1CA0A5"
@@ -110,15 +121,20 @@ def scan_listungen(data: bytes, filename: str):
 
 @st.cache_data(show_spinner=False, max_entries=4)
 def scan_template(data: bytes, filename: str):
-    """Read the template once to show its product type / locale. Returns (pt, locale)."""
+    """Read the template once for its product type, locale and vendor account.
+
+    Returns (product_type, locale, brand_slug | None). The brand comes from the
+    template's own Händlercode dropdown, so it is read rather than guessed.
+    """
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / (filename or "template.xlsm")
         p.write_bytes(data)
         t = VCTemplate(p)
-        return t.product_type, t.locale
+        return t.product_type, t.locale, cfgmod.detect_brand(CONFIG_DIR, t.vendor_code_options())
 
 
-def run_build(listungen_bytes, listungen_name, template_bytes, template_name, filter_template):
+def run_build(listungen_bytes, listungen_name, template_bytes, template_name, filter_template,
+              brand):
     """Write both uploads to a temp dir, call build() unchanged, read the outputs back."""
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
@@ -135,6 +151,7 @@ def run_build(listungen_bytes, listungen_name, template_bytes, template_name, fi
             config_dir=CONFIG_DIR,
             sheet=None,
             filter_template=filter_template,
+            brand=brand,
         )
         return {
             "report": report,
@@ -144,6 +161,34 @@ def run_build(listungen_bytes, listungen_name, template_bytes, template_name, fi
             "qa_name": Path(out_qa).name,
             "qa_bytes": Path(out_qa).read_bytes(),
         }
+
+
+def brand_summary(brand):
+    """One markdown line per value the brand profile pins, for the UI expander.
+
+    Reads the profile rather than the merged config, so what is shown is exactly
+    what the brand file changes - everything absent from it comes from
+    common.yaml and applies to every Beiersdorf account alike.
+    """
+    path = CONFIG_DIR / "brands" / f"{brand}.yaml"
+    try:
+        profile = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:  # noqa: BLE001 - the expander is a convenience, never a blocker
+        return "_Could not read this profile._"
+
+    lines = []
+    if profile.get("vendor_code"):
+        lines.append(f"- **Händlercode** — `{profile['vendor_code']}`")
+    for code, spec in (profile.get("field_overrides") or {}).items():
+        rule = spec.get("rule", {})
+        value = rule.get("const") or (rule.get("candidates") or [None])[0]
+        if value:
+            lines.append(f"- **{LABELS.get(code, code)}** — {value}")
+    for entry in (profile.get("mgr_categories") or {}).values():
+        lines.append(f"- **Produktkategorie** — {entry['category']}")
+    if not lines:
+        return "Nothing — this account uses the shared configuration unchanged."
+    return "\n".join(lines)
 
 
 def provenance_rows(report):
@@ -231,10 +276,10 @@ template_bytes = template_file.getvalue() if template_file else None
 
 # ------------------------------------------------------- inspect both uploads
 
-template_pt = template_locale = None
+template_pt = template_locale = detected_brand = None
 if template_bytes:
     try:
-        template_pt, template_locale = scan_template(template_bytes, template_file.name)
+        template_pt, template_locale, detected_brand = scan_template(template_bytes, template_file.name)
     except Exception as e:
         st.error(f"Could not read that template: {type(e).__name__}: {e}")
         template_bytes = None
@@ -264,6 +309,45 @@ if listungen_bytes:
             f"Listungen sheet **{sheet_name}**, header on row {header_row}, "
             f"{total_rows} product row(s)."
         )
+
+# -------------------------------------------------------------- brand picker
+
+# The brand is read off the template's Händlercode dropdown: the Eucerin
+# template offers exactly one option, the Cosmed templates offer five and none
+# of them Eucerin. The picker mirrors the product-type radio below - pre-select
+# what the template says, let the user override, warn if they disagree.
+brand = None
+brand_options = cfgmod.available_brands(CONFIG_DIR) if template_bytes else []
+if brand_options:
+    slugs = [slug for slug, _label in brand_options]
+    labels = dict(brand_options)
+    default_ix = slugs.index(detected_brand) if detected_brand in slugs else 0
+
+    st.markdown("#### Brand / vendor account")
+    brand = st.selectbox(
+        "Brand",
+        slugs,
+        index=default_ix,
+        format_func=lambda slug: labels[slug],
+        label_visibility="collapsed",
+    )
+
+    if detected_brand and brand == detected_brand:
+        st.caption("Detected from the template's Händlercode. Change it if that's wrong.")
+    elif detected_brand:
+        st.warning(
+            f"The template's Händlercode says **{labels[detected_brand]}**, but you picked "
+            f"**{labels[brand]}**. That is usually a mistake — accounts differ on vendor "
+            "code, product category and Lifestyle."
+        )
+    else:
+        st.caption(
+            "Could not read the account off this template's Händlercode — pick it yourself."
+        )
+
+    with st.expander("What this profile pins (everything else is shared)"):
+        st.markdown(brand_summary(brand))
+
 
 # ------------------------------------------------------- product-type picker
 
@@ -322,6 +406,7 @@ else:
                     template_bytes,
                     template_file.name,
                     filter_template,
+                    brand,
                 )
             except InputSheetError as e:
                 st.session_state.pop("result", None)
@@ -335,12 +420,13 @@ else:
                 # Audit trail: Cloud Logging picks this up from stdout. No file contents,
                 # no personal data beyond the already-authenticated identity.
                 log.info(
-                    "run user=%s listungen=%s template=%s product_type=%s "
+                    "run user=%s listungen=%s template=%s product_type=%s brand=%s "
                     "filter=%s rows=%d blockers=%d verdict=%s build=%s",
                     user_email,
                     listungen_file.name,
                     template_file.name,
                     r.template.product_type,
+                    r.config.get("_brand"),
                     filter_template,
                     len(r.rows),
                     len(r.blockers()),
