@@ -6,9 +6,10 @@ Each function takes the resolution context and returns either
     ({field_code: value, ...}, provenance_note)   - compound field group
     (None, reason)                                - unresolved, will be flagged
 
-Nothing here invents a value. Where a rule genuinely cannot decide - `scent` is
-the only one - the function says so via the `low_confidence` flag so QA can
-surface it for human review instead of silently shipping a guess.
+Nothing here invents a value. Where a rule genuinely cannot decide - a scent
+guessed because the source gives none is the only case - the function says so
+via the `low_confidence` flag so QA can surface it for human review instead of
+silently shipping a guess.
 """
 
 from __future__ import annotations
@@ -16,6 +17,15 @@ from __future__ import annotations
 from . import transforms as T
 
 REGISTRY = {}
+
+
+class FreeText(str):
+    """A value the template accepts even when its dropdown does not list it.
+
+    Vendor Central takes a typed-over dropdown cell as-is, so where the source
+    states the value outright (BDF's own scent) it is written verbatim rather
+    than rejected. A matching dropdown option still wins, for its casing.
+    """
 
 
 def derivation(name):
@@ -171,15 +181,24 @@ def d_item_form(ctx):
 
 @derivation("scent")
 def d_scent(ctx):
+    """BDF's own Duft (Scent), verbatim. Only where the source gives none - or a
+    placeholder such as 'normal' - is the scent guessed from the item name, and
+    every guess is flagged for review."""
+    src = str(ctx.record.get("scent") or "").strip()
+    ignore = {str(v).casefold() for v in ctx.config.get("scent_source_ignore", [])}
+    if src and src.casefold() not in ignore:
+        return FreeText(src), "BDF Duft (Scent)"
+
+    why = f"Duft (Scent) is {src!r}" if src else "no Duft (Scent) in source"
     rules = ctx.config.get("scent_keywords", [])
     default = ctx.config.get("scent_default", [])
     cands, kw = _keyword_pick(ctx.record.get("title"), rules, default)
     if not cands:
-        return None, "no scent keyword matched and no fallback configured"
+        return None, f"{why}; no scent keyword matched and no fallback configured"
+    ctx.low_confidence = True
     if kw is None:
-        ctx.low_confidence = True
-        return cands, "fallback scent - REVIEW: no keyword matched the item name"
-    return cands, f"title keyword {kw!r}"
+        return cands, f"{why}; fallback scent - no keyword matched the item name"
+    return cands, f"{why}; title keyword {kw!r}"
 
 
 @derivation("skin_type")
@@ -255,12 +274,24 @@ def d_net_content(ctx):
     if amount is None:
         return None, "Netto-füll-menge is empty or not numeric"
     raw_unit = ctx.record.get("net_content_unit")
-    unit_key = str(raw_unit).strip().lower() if raw_unit else None
+    unit_key = str(raw_unit).strip().lower().rstrip(".") if raw_unit else None
     units = ctx.config.get("content_units", {})
     entry = units.get(unit_key)
     if entry is None:
-        return None, f"Einheit Netto-füll-menge {raw_unit!r} is not in the unit table"
+        # The amount is still right; only its type cannot be named. Write the
+        # number (Anzahl von Einheiten) and flag the row rather than drop both.
+        ctx.low_confidence = True
+        return (
+            {"unit_count#1.value": amount},
+            f"Netto-füll-menge {amount}; unit {raw_unit!r} is not in the unit table, "
+            f"so Anzahl von Einheiten - Typ and the liquid fields are left empty",
+        )
 
+    note = f"Netto-füll-menge {amount} {raw_unit}"
+    factor = entry.get("factor")
+    if factor:
+        amount = round(amount * factor, 3)
+        note += f", converted to {amount} {entry['unit_count_type']}"
     out = {
         "unit_count#1.value": amount,
         "unit_count#1.type.value": entry["unit_count_type"],
@@ -271,7 +302,7 @@ def d_net_content(ctx):
         out["liquid_volume#1.unit"] = entry["liquid_unit"]
     else:
         out["contains_liquid_contents#1.value"] = ctx.config["no"]
-    return out, f"Netto-füll-menge {amount} {raw_unit}"
+    return out, note
 
 
 @derivation("package_weight")
@@ -340,6 +371,27 @@ def d_master_pack(ctx):
     out["rtip_master_pack_weight#1.value"] = w
     out["rtip_master_pack_weight#1.unit"] = unit_wt
     return out, "VE dimensions and weight"
+
+
+@derivation("items_per_inner_pack")
+def d_items_per_inner_pack(ctx):
+    """Artikel pro Innenkarton from IPIP; Stück pro VE where the sheet has no IPIP."""
+    ipip = T.to_int(ctx.record.get("ipip"))
+    if ipip is not None:
+        return ipip, "IPIP"
+    per_case = T.to_int(ctx.record.get("units_per_case"))
+    if per_case is not None:
+        return per_case, "no IPIP in source; fell back to Stück pro VE"
+    return None, "neither IPIP nor Stück pro VE is set"
+
+
+@derivation("inner_packs_per_master_pack")
+def d_inner_packs_per_master_pack(ctx):
+    """Innenkartons der Hauptverpackung from IPMP; 1 where the sheet has no IPMP."""
+    ipmp = T.to_int(ctx.record.get("ipmp"))
+    if ipmp is not None:
+        return ipmp, "IPMP"
+    return 1, "no IPMP in source; default 1"
 
 
 @derivation("generic_keyword")

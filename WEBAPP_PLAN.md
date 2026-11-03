@@ -86,8 +86,8 @@ A single Streamlit page:
    download). Render straight from the returned `QAReport` object — no need to
    re-parse the xlsx:
    - Big banner: green **UPLOAD READY** / red **NOT UPLOAD READY** from `report.status`.
-   - `report.blockers()` list, `report.warnings()` (review items — scent/`Duft` is
-     flagged every row by design, empty cost prices, GPSR gaps), `report.notes`.
+   - `report.blockers()` list, `report.warnings()` (review items — a guessed
+     scent/`Duft`, empty cost prices, GPSR gaps), `report.notes`.
    - The field-provenance table as a `st.dataframe` (every cell written + where the
      value came from). Source these from the `report.rows` / provenance structures —
      inspect `bdfvc/qa.py` for the exact accessors.

@@ -45,6 +45,10 @@ SYNONYMS = {
     "case_length": ["Länge VE"],
     "case_weight": ["Gewicht VE KG"],
     "units_per_case": ["Stück pro VE"],
+    # Shrinkage data. Newer BDF sheets carry these; older ones do not, and the
+    # derivations fall back to Stück pro VE and 1.
+    "ipip": ["IPIP", "Artikel pro Innenkarton"],
+    "ipmp": ["IPMP", "Innenkartons der Hauptverpackung"],
     "weight_gross": ["Gewicht Einzelstück (brutto) KG"],
     "weight_net": ["Gewicht Einzelstück Kg (netto)"],
     "dg_profile": ["Gefahrgut-profil", "Gefahrgutprofil"],

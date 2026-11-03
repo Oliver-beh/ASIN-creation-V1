@@ -20,6 +20,7 @@ from dataclasses import dataclass, field as dc_field
 
 from . import transforms as T
 from .derivations import REGISTRY as DERIVATIONS
+from .derivations import FreeText
 from .template import FIRST_DATA_ROW
 
 
@@ -241,6 +242,7 @@ class Mapper:
         for cand in cands:
             ok = self.template.validate(col, cand, target_row)
             if ok is not None:
+                ok = str(ok) if isinstance(ok, FreeText) else ok
                 self.template.write(target_row, col, ok)
                 row.add(
                     FieldResult(
@@ -253,6 +255,20 @@ class Mapper:
                 return
 
         allowed = self.template.allowed_values(col, target_row)
+        if isinstance(cands[0], FreeText):
+            text = str(cands[0])
+            self.template.write(target_row, col, text)
+            row.add(
+                FieldResult(
+                    code=code, label=label, requirement=requirement,
+                    value=text, provenance=provenance,
+                    note=f"{note}; not a dropdown option, written as free text",
+                    status="review" if low_conf else "ok",
+                    candidates=cands,
+                )
+            )
+            return
+
         detail = (
             f"none of {cands!r} is an allowed value"
             + (f" (template offers {len(allowed)} options)" if allowed else "")

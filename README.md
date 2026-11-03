@@ -112,12 +112,13 @@ offer is never written, and never approximated.
   matched before `Spray`. A pressurised product with no form word in its name
   falls back to Aerosol.
 
-**Flagged for a human every time:**
+- `scent` — BDF's own `Duft (Scent)`, written verbatim. Vendor Central accepts
+  a typed-over dropdown value, so `Fruchtig` or `Duftneutral` goes through as-is.
 
-- `scent`. The verified uploads are internally inconsistent — identical
-  Hidrofugal Classic products were given both `Unscented` and `Fresh` — so no
-  rule can reproduce past practice. The engine is deterministic and asks for
-  confirmation rather than pretending.
+**Flagged for a human:**
+
+- `scent` where `Duft (Scent)` is empty or a placeholder (`normal`). The item
+  name then decides, and the guess is flagged.
 
 ## 5. Where the output differs from the human uploads
 
@@ -129,7 +130,7 @@ Every remaining difference, and why:
 | `liquid_volume` = net content, human used less | 18 | We follow the AVS guide, which says Liquid Volume is the Netto-füll-menge. The human used a propellant-free figure that appears in no source column. |
 | `target_audience_keyword` follows the source | 11 | Source says `Unisex`, human wrote `Damen` from product knowledge. We stay faithful to the source; QA shows the value and where it came from. |
 | `item_name` keeps ` 1 ST` in the May batch | 11 | We match the **July** rebuild of the same products, which stripped it. May was the older practice. |
-| `scent` on Hidrofugal Classic | 5 | Human was inconsistent across the same product family. Ours is self-consistent and always flagged. |
+| `scent` follows BDF's `Duft (Scent)` | most deo rows | The April uploads picked a dropdown option (`Fresh`, `Unscented`); we now write BDF's own wording, as agreed with the account team. |
 | `skin_type` = `Alle`, human wrote `Normal` | 3 | Source says "Alle Hauttypen" and the template offers `Alle`. The automation is more accurate here. |
 | `brand` = NIVEA, human wrote NIVEA MEN | 2 | Source `Zielgruppe` says `Frauen`/`Unisex` for products that are in fact NIVEA MEN. A source-data error nothing can derive around. |
 

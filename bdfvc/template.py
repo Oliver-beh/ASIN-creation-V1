@@ -380,7 +380,16 @@ class VCTemplate:
     def write(self, row: int, col: int, value):
         self.ws.cell(row, col).value = value
 
+    def strip_data_comments(self):
+        """Drop every cell comment from the product rows. The upload file carries
+        values only; explanations belong in the QA workbook."""
+        for row in self.ws.iter_rows(min_row=FIRST_DATA_ROW):
+            for cell in row:
+                if cell.comment is not None:
+                    cell.comment = None
+
     def save(self, out_path):
         from .xlsm import save_preserving_extensions
 
+        self.strip_data_comments()
         save_preserving_extensions(self.wb, self.path, out_path, self._sheet_xml_path())
