@@ -43,6 +43,9 @@ item_form_keywords_prepend:
   - {match: [Serum, Seren], candidates: []}
 
 # --------------------------------------------------------------------- scent
+# Only a fallback: BDF's own Duft (Scent) is written verbatim when present (see
+# common.yaml). The rules below apply where the source gives no scent.
+#
 # This template's Duft list is not the fragrance-family vocabulary the other
 # product types use - it is only 'Mit Duft', 'Ohne Duft', 'Ohne Parfüm'. The
 # shared scent_keywords therefore all resolve to values this template rejects.
@@ -50,7 +53,7 @@ item_form_keywords_prepend:
 # value; claiming 'Ohne Parfüm' on a product whose INCI lists Parfum is a
 # claims problem, not just a wrong cell. Everything else defaults to
 # 'Mit Duft', which stays true for the current Beiersdorf serum range and is
-# flagged for review on every row like all other scent values.
+# flagged for review like every other guessed scent.
 scent_keywords:
   - {match: ["Ohne Duft", "Ohne Parfum", "Ohne Parfüm", Unparfümiert, "Fragrance Free", "Fragrance-Free"],
      candidates: ["Ohne Duft", "Ohne Parfüm"]}

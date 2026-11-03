@@ -36,6 +36,20 @@ content_units:
   stk:
     unit_count_type: Stück
     is_liquid: false
+  stück:
+    unit_count_type: Stück
+    is_liquid: false
+  # The unit_count type dropdown offers no litre or kilogram, so these are
+  # converted (factor) to the unit the template does offer.
+  l:
+    unit_count_type: milliliter
+    is_liquid: true
+    liquid_unit: Milliliter
+    factor: 1000
+  kg:
+    unit_count_type: gramm
+    is_liquid: false
+    factor: 1000
 
 # ---------------------------------------------------------------------- brand
 # Verified against 58 rows: the brand is always the first token of the item name.
@@ -134,10 +148,14 @@ subcategory_overrides:
     - {match: [Gel, Wax, Wachs, Pomade], value: "Styling Gel, Wax and other Products"}
 
 # ---------------------------------------------------------------------- scent
-# The source column 'Duft (Scent)' is NOT reliable - the examples show 'Fruchtig'
-# resolving to both Fresh and Rose. The item name is the real signal, with a
-# fallback that mirrors the AVS guide ("if nothing fits, select fresh").
-# Every fallback hit is flagged for review rather than shipped silently.
+# BDF's 'Duft (Scent)' is written as-is. Vendor Central accepts a typed-over
+# dropdown value, so BDF's own wording (Fruchtig, Duftneutral, Mild ...) reaches
+# the listing unchanged instead of being forced onto a dropdown option.
+#
+# Only when the source is empty, or holds a placeholder that is not a scent,
+# does the item name decide - with the AVS fallback ("if nothing fits, select
+# fresh"). Every guess is flagged for review.
+scent_source_ignore: [normal, "-", n/a]
 scent_keywords:
   - {match: [Vanilla, Vanille], candidates: [Vanille]}
   - {match: [Lime, Limette, Zitrone, Lemon, Citrus, Zitrus], candidates: [Zitrus, Limette, Zitrone]}
@@ -262,16 +280,11 @@ fields:
      skip_when: {subcategory_in: [Gift Sets]}}
   - {code: "unit_count#1.value",                  rule: {derive: net_content}}
   - {code: "street_date#1.value",                 rule: {source: launch_date, transform: date}}
-  # The template's scent vocabulary is product-type specific: the deodorant list
-  # offers 'Frisch', the face-cream list does not. Where nothing fits, the
-  # documented manual practice is to leave it blank, so a rejected scent is a
-  # review item and never blocks the upload.
-  # Scent is always flagged for review. The verified uploads are internally
-  # inconsistent here - identical Hidrofugal Classic products were given both
-  # 'Unscented' and 'Fresh' - so no rule can reproduce past practice. The engine
-  # is deterministic instead, and asks a human to confirm.
+  # BDF's own scent is written verbatim (see scent_source_ignore above). A guessed
+  # scent is flagged for review, and one the dropdown rejects leaves the cell
+  # empty rather than blocking the upload.
   - {code: "scent#1.value",                       rule: {derive: scent}, on_reject: review,
-     always_review: true, skip_when: {subcategory_in: [Gift Sets]}}
+     skip_when: {subcategory_in: [Gift Sets]}}
   - {code: "skin_type#1.value",                   rule: {derive: skin_type},
      skip_when: {subcategory_in: [Gift Sets]}}
 
@@ -284,8 +297,11 @@ fields:
   - {code: "item_package_weight#1.value",         rule: {derive: package_weight}}
   - {code: "rtip_master_pack_weight#1.value",     rule: {derive: master_pack},
      skip_when: {source_empty: case_weight}}
-  - {code: "rtip_items_per_inner_pack#1.value",   rule: {source: units_per_case, transform: int}}
-  - {code: "rtip_inner_packs_per_master_pack#1.value", rule: {const: 1}}
+  # Shrinkage data: IPIP -> Artikel pro Innenkarton, IPMP -> Innenkartons der
+  # Hauptverpackung. Sheets without those columns fall back to the verified
+  # past practice (Stück pro VE, and 1).
+  - {code: "rtip_items_per_inner_pack#1.value",   rule: {derive: items_per_inner_pack}}
+  - {code: "rtip_inner_packs_per_master_pack#1.value", rule: {derive: inner_packs_per_master_pack}}
 
   - {code: "country_of_origin#1.value",           rule: {lookup: country, source_column: origin}, required_in_template: true}
   - {code: "rtip_safety_warning#1.value",         rule: {const: "N/A"}}

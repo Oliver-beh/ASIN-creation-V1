@@ -500,9 +500,9 @@ def render_result(result):
     st.markdown("### Needs a human eye (not blocking)")
     if warnings_:
         st.caption(
-            "Scent (`Duft`) is flagged on every row by design — the rule cannot "
-            "verify it, so a human confirms it. Empty cost prices and GPSR gaps "
-            "show up here too."
+            "Scent (`Duft`) is taken from BDF's Duft (Scent) column; it is flagged "
+            "only where that column was empty and the scent had to be guessed. "
+            "Empty cost prices and GPSR gaps show up here too."
         )
         with st.expander(f"{len(warnings_)} item(s)", expanded=len(warnings_) <= 12):
             for w in warnings_:

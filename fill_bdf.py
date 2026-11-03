@@ -66,6 +66,13 @@ def build(template_path, input_path, out_dir, config_dir=None, sheet=None, filte
             + ("..." if len(sheet_obj.unmapped) > 15 else "")
         )
 
+    for col, fallback in (
+        ("ipip", "Artikel pro Innenkarton uses Stück pro VE"),
+        ("ipmp", "Innenkartons der Hauptverpackung is set to 1"),
+    ):
+        if col not in sheet_obj.columns:
+            report.notes.append(f"Input has no {col.upper()} column: {fallback}")
+
     template.clear_data_rows()
     mapper = Mapper(template, cfg)
 

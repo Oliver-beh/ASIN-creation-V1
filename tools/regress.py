@@ -114,6 +114,13 @@ def read_rows(path, sheet=None):
     return out
 
 
+def count_comments(path):
+    """Cell comments anywhere in the upload file's product rows. Must be 0."""
+    wb = load_workbook(path)
+    ws = wb[[s for s in wb.sheetnames if s.startswith(("Vorlage-", "Template-"))][0]]
+    return sum(1 for row in ws.iter_rows(min_row=7) for c in row if c.comment)
+
+
 CASES = [
     dict(
         name="Deodorants (30)",
@@ -162,6 +169,7 @@ def run_case(case, verbose=False):
     )
     got = read_rows(out_xlsm)
     want = read_rows(UP / case["expected"])
+    comments = count_comments(out_xlsm)
 
     common = set(got) & set(want)
     field_diffs = Counter()
@@ -189,6 +197,7 @@ def run_case(case, verbose=False):
     print(f"  rows generated {len(got):3}   overlap with expected {len(common):3}")
     print(f"  cells compared {total:4}   matched {matched:4}  ({pct:.1f}%)")
     print(f"  status         {report.status}   blockers {len(report.blockers())}")
+    print(f"  cell comments  {comments}" + ("   <- FAIL: the upload must carry values only" if comments else ""))
     if field_diffs:
         print("  differing fields:")
         for fc, n in field_diffs.most_common():
@@ -199,7 +208,8 @@ def run_case(case, verbose=False):
             if verbose:
                 for sku, wv, gv in samples[fc][1:6]:
                     print(f"          .. {sku}: human {str(wv)[:34]!r} / ours {str(gv)[:34]!r}")
-    return matched, total, len(report.blockers())
+    # A comment in the upload counts as a blocker.
+    return matched, total, len(report.blockers()) + comments
 
 
 if __name__ == "__main__":
